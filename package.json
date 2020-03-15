@@ -1,0 +1,24 @@
+{
+  "name": "webgl-example",
+  "version": "1.0.0",
+  "description": "webgl example",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrpan/webgl-example.git"
+  },
+  "keywords": [
+    "webgl",
+    "js",
+    "html"
+  ],
+  "author": "mrpan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mrpan/webgl-example/issues"
+  },
+  "homepage": "https://github.com/mrpan/webgl-example#readme"
+}
