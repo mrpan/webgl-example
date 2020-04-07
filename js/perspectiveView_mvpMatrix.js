@@ -70,8 +70,12 @@ var VSHADER_SOURCE=
     mvpMatrix.set(uProjMatrix).multiply(uViewMatrix).multiply(uModelMatrix);
     var u_mvpMatrix = gl.getUniformLocation(gl.program,'u_mvpMatrix');
     gl.uniformMatrix4fv(u_mvpMatrix,false,mvpMatrix.elements);
-   
-    
+    //隐藏面消除
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    //深度冲突 采用多边形偏移机制解决
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1.0,0.1);
     gl.clearColor(0.0, 0.0, 0.0, 0.5);
 
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -89,10 +93,6 @@ var VSHADER_SOURCE=
     var n =9;
   
     var vertices = new Float32Array([
-        0.0,  1.0,  -4.0,  0.4,  1.0,  0.4, // The back green one
-    -0.5, -1.0,  -4.0,  0.4,  1.0,  0.4,
-     0.5, -1.0,  -4.0,  1.0,  0.4,  0.4, 
-
      0.0,  1.0,  -2.0,  1.0,  1.0,  0.4, // The middle yellow one
     -0.5, -1.0,  -2.0,  1.0,  1.0,  0.4,
      0.5, -1.0,  -2.0,  1.0,  0.4,  0.4, 
@@ -100,6 +100,10 @@ var VSHADER_SOURCE=
      0.0,  1.0,   0.0,  0.4,  0.4,  1.0,  // The front blue one 
     -0.5, -1.0,   0.0,  0.4,  0.4,  1.0,
      0.5, -1.0,   0.0,  1.0,  0.4,  0.4, 
+
+     0.0,  1.0,  -4.0,  0.4,  1.0,  0.4, // The back green one
+    -0.5, -1.0,  -4.0,  0.4,  1.0,  0.4,
+     0.5, -1.0,  -4.0,  1.0,  0.4,  0.4, 
       ]);
     var buffer =gl.createBuffer();
     if(!buffer){
