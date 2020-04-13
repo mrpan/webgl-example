@@ -1,6 +1,7 @@
 var VSHADER_SOURCE=
 'attribute vec4 a_Position;\n'+
 'uniform mat4 u_mvpMatrix;\n'+//模型视图投影矩阵
+'uniform mat4 u_normalMatrix;\n'+//法向量变化矩阵（原有法向量乘以模型矩阵的逆转置矩阵）
 'attribute vec4 a_Color;\n'+//表面颜色
 'attribute vec4 a_Normal;\n'+//法向量
 'uniform vec3 u_LightColor;\n'+//光线颜色
@@ -9,7 +10,7 @@ var VSHADER_SOURCE=
 'varying vec4 v_Color;\n'+
 'void main() {\n'+
  ' gl_Position = u_mvpMatrix* a_Position;\n'+
- ' vec3 normal = normalize(vec3(a_Normal));\n'+//归一化法向量
+ ' vec3 normal = normalize(vec3(u_normalMatrix*a_Normal));\n'+//归一化法向量
  ' float nDotL = max(dot(u_LightDirection,normal),0.0);\n'+ //光线方向向量与法向量的点积即cos入射角
  ' vec3 diffuse = u_LightColor * a_Color.rgb * nDotL;\n'+
  ' vec3 ambient = u_AmbientLight * vec3(a_Color);\n'+
@@ -66,13 +67,21 @@ var VSHADER_SOURCE=
  function drawTriagnles(gl,canvas){
     var n =initColoredBuffer(gl);
     var mvpMatrix =new Matrix4();//模型视图投影矩阵
+    var modelMatrix =new Matrix4();//模型矩阵
+    var normalMatrix= new Matrix4();//法向量变化矩阵
      mvpMatrix.setPerspective(50,canvas.width/canvas.height,1,100);
      mvpMatrix.lookAt(eyeX, eyeY, eyeZ, 0, 0, 0, 0, 1, 0);
-     mvpMatrix.translate(0,0,0);
+     modelMatrix.setTranslate(0,1,0);
+     modelMatrix.rotate(45,0,0,1);
+     mvpMatrix.multiply(modelMatrix);
+     normalMatrix.setInverseOf(modelMatrix);//模型矩阵的逆矩阵
+     normalMatrix.transpose();//进行转置
     var u_mvpMatrix = gl.getUniformLocation(gl.program,'u_mvpMatrix');
 
     gl.uniformMatrix4fv(u_mvpMatrix,false,mvpMatrix.elements);
 
+    var u_normalMatrix =gl.getUniformLocation(gl.program,'u_normalMatrix');
+    gl.uniformMatrix4fv(u_normalMatrix,false,normalMatrix.elements);
     var u_LightColor = gl.getUniformLocation(gl.program,'u_LightColor');
     var u_LightDirection = gl.getUniformLocation(gl.program,'u_LightDirection');
     var u_AmbientLight =gl.getUniformLocation(gl.program,'u_AmbientLight');
@@ -87,9 +96,9 @@ var VSHADER_SOURCE=
     //隐藏面消除
     gl.enable(gl.DEPTH_TEST);
     gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);
-    //深度冲突 采用多边形偏移机制解决
-    gl.enable(gl.POLYGON_OFFSET_FILL);
-    gl.polygonOffset(1.0,0.1);
+    // //深度冲突 采用多边形偏移机制解决
+    // gl.enable(gl.POLYGON_OFFSET_FILL);
+    // gl.polygonOffset(1.0,0.1);
     
 
     // gl.clear(gl.COLOR_BUFFER_BIT);
@@ -151,42 +160,15 @@ var VSHADER_SOURCE=
         0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,  // v7-v4-v3-v2 down
         0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
       ]);
-    var buffer =gl.createBuffer();
-    
-    if(!buffer){
-        console.log('创建顶点缓冲区失败');
-        return false;
+    if(!initArrayBuffer(gl,'a_Position',vertices,3,gl.FLOAT,false,0,0)){
+        console.log('顶点位置缓冲区创建失败');
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
-    
-    gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);
-
-    var FSIZE =vertices.BYTES_PER_ELEMENT;
-    var a_Position = gl.getAttribLocation(gl.program,'a_Position');
-
-    gl.vertexAttribPointer(a_Position,3,gl.FLOAT,false,0,0);
-
-    gl.enableVertexAttribArray(a_Position);
-    //颜色
-    var colorBuffer =gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER,colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER,colors,gl.STATIC_DRAW);
-    var a_Color =gl.getAttribLocation(gl.program,'a_Color');
-    gl.vertexAttribPointer(a_Color,3,gl.FLOAT,false,0,0);
-
-    gl.enableVertexAttribArray(a_Color);
-     //法向量缓冲区
-     var normalBuffer =gl.createBuffer();
-     if(!normalBuffer){
-         console.log('创建法向量缓冲区失败');
-         return false;
-     }
-     gl.bindBuffer(gl.ARRAY_BUFFER,normalBuffer);
-     gl.bufferData(gl.ARRAY_BUFFER,normals,gl.STATIC_DRAW);
-     var a_Normal=gl.getAttribLocation(gl.program,'a_Normal');
-     gl.vertexAttribPointer(a_Normal,3,gl.FLOAT,false,0,0);
-     gl.enableVertexAttribArray(a_Normal);
-
+    if(!initArrayBuffer(gl,'a_Color',colors,3,gl.FLOAT,false,0,0)){
+        console.log('顶点颜色缓冲区创建失败');
+    }
+    if(!initArrayBuffer(gl,'a_Normal',normals,3,gl.FLOAT,false,0,0)){
+        console.log('顶点法向量缓冲区创建失败');
+    }
      //顶点索引缓冲区
     var indexBuffer =gl.createBuffer();
     if(!indexBuffer){
@@ -196,5 +178,21 @@ var VSHADER_SOURCE=
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.STATIC_DRAW);
     return indices.length;
+ }
+
+ function initArrayBuffer(gl,index,arrayData,size,type,normalized,stride,offset){
+    var buffer =gl.createBuffer();
+    if(!buffer){
+        console.log('创建缓冲区失败');
+        return false;
+    }
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
+    
+    gl.bufferData(gl.ARRAY_BUFFER,arrayData,gl.STATIC_DRAW);
+    var a_type =gl.getAttribLocation(gl.program,index);
+    gl.vertexAttribPointer(a_type,size,type,normalized,stride,offset);
+    gl.enableVertexAttribArray(a_type);
+    gl.bindBuffer(gl.ARRAY_BUFFER,null);
+    return true;
  }
  init();
