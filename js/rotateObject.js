@@ -65,7 +65,7 @@ function main() {
   initEventHandlers(canvas, currentAngle,gl, n, viewProjMatrix, u_MvpMatrix, currentAngle);
 
   // Set texture
-  if (!initTextures(gl)) {
+  if (!initTextures(gl, n, viewProjMatrix, u_MvpMatrix, currentAngle)) {
     console.log('Failed to intialize the texture.');
     return;
   }
@@ -74,7 +74,7 @@ function main() {
 //     requestAnimationFrame(tick);
 //   };
 //   tick();
-  draw(gl, n, viewProjMatrix, u_MvpMatrix, currentAngle);
+//   draw(gl, n, viewProjMatrix, u_MvpMatrix, currentAngle);
 }
 
 function initVertexBuffers(gl) {
@@ -201,7 +201,7 @@ function initArrayBuffer(gl, data, num, type, attribute) {
   return true;
 }
 
-function initTextures(gl) {
+function initTextures(gl, n, viewProjMatrix, u_MvpMatrix, currentAngle) {
   // Create a texture object
   var texture = gl.createTexture();
   if (!texture) {
@@ -225,10 +225,12 @@ function initTextures(gl) {
   // Register the event handler to be called when image loading is completed
   image.onload = function(){ 
       loadTexture(gl, texture, u_Sampler, image); 
-      console.log(222)
+       draw(gl, n, viewProjMatrix, u_MvpMatrix, currentAngle);//纹理加载完成后绘制
+
     };
   // Tell the browser to load an Image
   image.src = '../resources/sky.jpg';
+  console.log(222)
 
   return true;
 }
